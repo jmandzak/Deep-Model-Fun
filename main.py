@@ -23,6 +23,10 @@ def task1(train_img, train_class, val_img, val_class, target):
         num_outputs = 7
         y_train = pd.get_dummies(train_class.race, prefix='race')
         y_test = pd.get_dummies(val_class.race, prefix='race')
+    elif target == 'a':
+        num_outputs = 9
+        y_train = pd.get_dummies(train_class.age, prefix='age')
+        y_test = pd.get_dummies(val_class.age, prefix='age')
 
     # reshape images to make them 1d
     train_img = train_img.reshape(86744, 1024)
@@ -47,7 +51,7 @@ def task1(train_img, train_class, val_img, val_class, target):
     #Tensforboard callback function
     tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 
-    model.fit(train_img, y_train, batch_size=batch_size, epochs=100, validation_data=(val_img, y_test), callbacks=[tensorboard_callback])
+    model.fit(train_img, y_train, batch_size=batch_size, epochs=50, validation_data=(val_img, y_test), callbacks=[tensorboard_callback])
 
     print(model.evaluate(val_img, y_test))
 
@@ -88,7 +92,7 @@ def main():
     val_images = (val_images.astype('float32') - min) / (max - min)
 
     # TODO: replace 1 with command line args later
-    target = 'g'
+    target = 'a'
     if(1):
         task1(train_images, train_labels, val_images, valid_labels, target)
 
