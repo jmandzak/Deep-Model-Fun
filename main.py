@@ -7,26 +7,60 @@ from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras import layers, losses, metrics, optimizers
 import cv2
 import numpy as np
-from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.metrics import classification_report, multilabel_confusion_matrix, confusion_matrix, ConfusionMatrixDisplay
 import datetime
 import matplotlib.pyplot as plt
+
+# we'll need some dicts to convert one-hot-encoding back to normal
+gender = {
+    0: 'Female',
+    1: 'Male'
+}
+race = {
+    0: 'Black',
+    1: 'East Asian',
+    2: 'Indian',
+    3: 'Latino_Hispanic',
+    4: 'Middle Eastern',
+    5: 'Southeast Asian',
+    6: 'White'
+}
+age = {
+    0: '0-2',
+    1: '10-19',
+    2: '20-29',
+    3: '3-9',
+    4: '30-39',
+    5: '40-49',
+    6: '50-59',
+    7: '60-69',
+    8: 'more than 70'
+}
 
 # the first task, which uses an ANN
 def task1(train_img, train_class, val_img, val_class, target):
     num_outputs = 0
+    y_true = 0
+    translation = 0
 
     if target == 'g':
         num_outputs = 2
         y_train = pd.get_dummies(train_class.gender, prefix='gender')
         y_test = pd.get_dummies(val_class.gender, prefix='gender')
+        y_true = val_class.gender
+        translation = gender
     elif target == 'r':
         num_outputs = 7
         y_train = pd.get_dummies(train_class.race, prefix='race')
         y_test = pd.get_dummies(val_class.race, prefix='race')
+        y_true = val_class.race
+        translation = race
     elif target == 'a':
         num_outputs = 9
         y_train = pd.get_dummies(train_class.age, prefix='age')
         y_test = pd.get_dummies(val_class.age, prefix='age')
+        y_true = val_class.age
+        translation = age
 
     # reshape images to make them 1d
     train_img = train_img.reshape(86744, 1024)
@@ -51,9 +85,22 @@ def task1(train_img, train_class, val_img, val_class, target):
     #Tensforboard callback function
     tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 
-    model.fit(train_img, y_train, batch_size=batch_size, epochs=50, validation_data=(val_img, y_test), callbacks=[tensorboard_callback])
+    model.fit(train_img, y_train, batch_size=batch_size, epochs=5, validation_data=(val_img, y_test), callbacks=[tensorboard_callback])
 
-    print(model.evaluate(val_img, y_test))
+    loss, acc = model.evaluate(val_img, y_test)
+    y_pred = model.predict(val_img)
+    y_pred = np.argmax(y_pred, axis=1)
+    new_y_pred = []
+    for y in y_pred:
+        new_y_pred.append(translation[y])
+    y_pred = pd.DataFrame(new_y_pred, columns=['col'])
+    
+    print(f'Final Accuracy: {round(acc, 2)}')
+    print(confusion_matrix(y_true, y_pred.col))
+    ConfusionMatrixDisplay.from_predictions(y_true, y_pred.col, cmap='Blues')
+    plt.xticks(rotation=90)
+    plt.tight_layout()
+    plt.savefig('fig.jpg')
 
 
 # train a CNN that has two branches at the end to determine two different attributes
