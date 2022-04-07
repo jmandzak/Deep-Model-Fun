@@ -59,7 +59,9 @@ def task1(train_img, train_class, val_img, val_class, target):
 
 def main():
     # do command line arguments here
-
+    if len(sys.argv) < 3:
+        print("args: task[1/2/3/4/5] attribute[g/a/r]")
+        return
     # read in all the data we need to
     
     # first read in the train and validation classification results
@@ -92,8 +94,9 @@ def main():
     val_images = (val_images.astype('float32') - min) / (max - min)
 
     # TODO: replace 1 with command line args later
-    target = 'a'
-    if(1):
+    target = sys.argv[2]
+    task = sys.argv[1]
+    if(task == '1'):
         task1(train_images, train_labels, val_images, valid_labels, target)
 
 
