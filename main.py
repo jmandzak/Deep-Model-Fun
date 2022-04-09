@@ -4,7 +4,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import pandas as pd
 import tensorflow as tf
 from tensorflow.keras.models import Sequential, Model
-from tensorflow.keras import layers, losses, metrics, optimizers
+from tensorflow.keras import layers, losses, metrics, optimizers, backend
 import cv2
 import numpy as np
 from sklearn.metrics import classification_report, multilabel_confusion_matrix, confusion_matrix, ConfusionMatrixDisplay
@@ -36,6 +36,27 @@ age = {
     7: '60-69',
     8: 'more than 70'
 }
+
+# helper function for the VAE pulled from the lecture notes
+def sampling(args):
+    """Reparameterization trick by sampling from an isotropic unit Gaussian.
+
+    # Arguments
+        args (tensor): mean and log of variance of Q(z|X)
+
+    # Returns
+        z (tensor): sampled latent vector
+    """
+    #Extract mean and log of variance
+    z_mean, z_log_var = args
+    #get batch size and length of vector (size of latent space)
+    batch = backend.shape(z_mean)[0]
+    dim = backend.int_shape(z_mean)[1]
+    
+    # by default, random_normal has mean = 0 and std = 1.0
+    epsilon = backend.random_normal(shape=(batch, dim))
+    #Return sampled number (need to raise var to correct power)
+    return z_mean + backend.exp(z_log_var) * epsilon
 
 # the first task, which uses an ANN
 def task1(train_img, train_class, val_img, val_class, target):
@@ -147,6 +168,75 @@ def task4(train_img, train_class, val_img, val_class, target):
 
     print(model.evaluate(val_img, {'out1': y_test_gender, 'out2': y_test_race}))
 
+
+# this task implements a VAE
+def task5(train_img, val_img):
+    latent_dim = 5
+    batch_size = 100
+    lr = 0.001
+    optimizer = optimizers.Adam(learning_rate=lr)
+    
+    # build encoder model
+    input = layers.Input(shape=(32, 32, 1))
+    conv1 = layers.Conv2D(filters=20, kernel_size=(6,6), padding='valid', strides=1, activation='relu', name='conv1')(input)
+    conv2 = layers.Conv2D(filters=40, kernel_size=(5,5), padding='valid', strides=1, activation='relu', name='conv2')(conv1)
+    flatten = layers.Flatten()(conv2)
+    
+    z_mean = layers.Dense(latent_dim, name='z_mean')(flatten)
+    z_log_var = layers.Dense(latent_dim, name='z_log_var')(flatten)
+
+    # use reparameterization trick to push the sampling out as input (taken from lecture notes)
+    z = layers.Lambda(sampling, name='z')([z_mean, z_log_var])
+    
+    encoder = Model(input, [z_mean, z_log_var, z], name='encoder_output')
+    print(encoder.summary())
+
+    latent_input = layers.Input(shape=(latent_dim,), name='z_sampling')
+    fc1 = layers.Dense(21160, activation='relu', name='decoder_dense')(latent_input)
+    reshape = layers.Reshape((23, 23, 40))(fc1)
+    deconv1 = layers.Conv2DTranspose(20, kernel_size=(5,5), padding='valid', strides=1, activation='relu', name='deconv1')(reshape)
+    deconv2 = layers.Conv2DTranspose(1, kernel_size=(6,6), padding='valid', strides=1, activation='relu', name='deconv2')(deconv1)
+
+    decoder = Model(latent_input, deconv2, name='decoder_output')
+    print(decoder.summary())
+
+    # create the model and loss function, again pulled from lecture notes
+    # instantiate VAE model
+    outputs = decoder(encoder(input)[2])
+    vae = Model(input, outputs, name='vae_mlp')
+
+    #setting loss
+    # inspiration for input dim ^2 and flatten comes from https://jaketae.github.io/study/vae/
+    # which I also believe is where the lecture notes came from or at least look very similar to
+    reconstruction_loss = 32 * 32 * losses.mse(backend.flatten(input), backend.flatten(outputs))
+    reconstruction_loss *=1
+    kl_loss = backend.exp(z_log_var) + backend.square(z_mean) - z_log_var - 1
+    kl_loss = backend.sum(kl_loss, axis=-1)
+    kl_loss *= 0.001
+    vae_loss = backend.mean(reconstruction_loss + kl_loss)
+    vae.add_loss(vae_loss)
+    vae.compile(optimizer=optimizer)
+    
+    # create tensorboard
+    #creating unique name for tensorboard directory
+    log_dir = "logs/class/task5/" + datetime.datetime.now().strftime(f"%Y-%m-%d-%H:%M:%S-batch_size={batch_size}-lr={lr}")
+    #Tensforboard callback function
+    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+
+    vae.fit(train_img, epochs=10, batch_size=batch_size, validation_data=(val_img, None), callbacks=[tensorboard_callback])
+
+    # print out some randomly generated images
+    arr = np.random.rand(10, 5) * 12.5 - 5
+    y_pred = decoder.predict(arr)
+    i = 0
+    for a in y_pred:
+        img = np.reshape(a, (32, 32)) * 255
+        f = f'face{i}.jpg'
+        print(img)
+        cv2.imwrite(f, img)
+        i += 1
+
+
 def main():
     # do command line arguments here
     if len(sys.argv) < 3:
@@ -192,7 +282,8 @@ def main():
     elif(task == '4'):
         task4(train_images, train_labels, val_images, valid_labels, target)
 
-
+    elif(task == '5'):
+        task5(train_images, val_images)
 
 if __name__ == '__main__':
     main()
