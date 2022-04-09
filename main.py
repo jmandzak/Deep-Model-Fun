@@ -11,6 +11,7 @@ from sklearn.metrics import classification_report, multilabel_confusion_matrix, 
 import datetime
 import matplotlib.pyplot as plt
 
+
 # we'll need some dicts to convert one-hot-encoding back to normal
 gender = {
     0: 'Female',
@@ -102,7 +103,7 @@ def task1(train_img, train_class, val_img, val_class, target):
 
     # create tensorboard
     #creating unique name for tensorboard directory
-    log_dir = "logs/class/" + datetime.datetime.now().strftime(f"%Y/%m/%d-%H:%M:%S-batch_size={batch_size}-lr={lr}")
+    log_dir = "logs/class/" + datetime.datetime.now().strftime(f"%Y/%m/%d-%H-%M-%S-batch_size={batch_size}-lr={lr}")
     #Tensforboard callback function
     tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 
@@ -123,6 +124,143 @@ def task1(train_img, train_class, val_img, val_class, target):
     plt.tight_layout()
     plt.savefig('fig.jpg')
 
+def task2(train_img, train_class, val_img, val_class, target):
+    if target == 'g':
+        num_outputs = 2
+        y_train = pd.get_dummies(train_class.gender, prefix='gender')
+        y_test = pd.get_dummies(val_class.gender, prefix='gender')
+        y_true = val_class.gender
+        translation = gender
+    elif target == 'r':
+        num_outputs = 7
+        y_train = pd.get_dummies(train_class.race, prefix='race')
+        y_test = pd.get_dummies(val_class.race, prefix='race')
+        y_true = val_class.race
+        translation = race
+    elif target == 'a':
+        num_outputs = 9
+        y_train = pd.get_dummies(train_class.age, prefix='age')
+        y_test = pd.get_dummies(val_class.age, prefix='age')
+        y_true = val_class.age
+        translation = age
+
+    
+    train_img = train_img.reshape(86744, 32, 32, 1)
+    val_img = val_img.reshape(10954, 32, 32, 1)
+
+    print("Building Model")
+    model = Sequential()
+    model.add(layers.Conv2D(40, (5, 5), input_shape=((32, 32, 1)), activation='relu'))
+    model.add(layers.MaxPooling2D(2, 2))
+    model.add(layers.Flatten())
+    model.add(layers.Dense(100, activation='relu'))
+    model.add(layers.Dense(num_outputs, activation='softmax'))
+
+    print("setting params")
+    lr = .001
+    batch_size = 100
+    optimizer = optimizers.Adam(learning_rate=lr)
+    model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
+
+    # create tensorboard
+    #creating unique name for tensorboard directory
+    log_dir = "logs/class/" + datetime.datetime.now().strftime(f"%Y/%m/%d-%H-%M-%S-batch_size={batch_size}-lr={lr}")
+    #Tensforboard callback function
+    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+
+    # train_img =np.expand_dims(train_img, axis=(0,3))
+    # val_img =np.expand_dims(val_img, axis=(0,3))
+
+    print("Running model")
+    model.fit(train_img, y_train, batch_size=batch_size, epochs=5, validation_data=(val_img, y_test), callbacks=[tensorboard_callback])
+
+    
+
+    print("Collecting data")
+    loss, acc = model.evaluate(val_img, y_test)
+    y_pred = model.predict(val_img)
+    y_pred = np.argmax(y_pred, axis=1)
+    new_y_pred = []
+    for y in y_pred:
+        new_y_pred.append(translation[y])
+    y_pred = pd.DataFrame(new_y_pred, columns=['col'])
+
+    print(f'Final Accuracy: {round(acc, 2)}')
+    print(confusion_matrix(y_true, y_pred.col))
+    ConfusionMatrixDisplay.from_predictions(y_true, y_pred.col, cmap='Blues')
+    plt.xticks(rotation=90)
+    plt.tight_layout()
+    plt.savefig('fig.jpg')
+
+def task3(train_img, train_class, val_img, val_class, target):
+    if target == 'g':
+        num_outputs = 2
+        y_train = pd.get_dummies(train_class.gender, prefix='gender')
+        y_test = pd.get_dummies(val_class.gender, prefix='gender')
+        y_true = val_class.gender
+        translation = gender
+    elif target == 'r':
+        num_outputs = 7
+        y_train = pd.get_dummies(train_class.race, prefix='race')
+        y_test = pd.get_dummies(val_class.race, prefix='race')
+        y_true = val_class.race
+        translation = race
+    elif target == 'a':
+        num_outputs = 9
+        y_train = pd.get_dummies(train_class.age, prefix='age')
+        y_test = pd.get_dummies(val_class.age, prefix='age')
+        y_true = val_class.age
+        translation = age
+
+    train_img = train_img.reshape(86744, 32, 32, 1)
+    val_img = val_img.reshape(10954, 32, 32, 1)
+
+    print("Building Model")
+    model = Sequential()
+    model.add(layers.Conv2D(20, (5, 5), input_shape=((32, 32, 1)), activation='relu'))
+    model.add(layers.MaxPooling2D(2, 2))
+    model.add(layers.Conv2D(40, (3, 3), activation='relu'))
+    # model.add(layers.MaxPooling2D(2, 2))
+    # model.add(layers.Conv2D(400, (2, 2), activation='relu'))
+    model.add(layers.Flatten())
+    model.add(layers.Dense(64, activation='relu'))
+    model.add(layers.Dense(num_outputs, activation='softmax'))
+
+    print("setting params")
+    lr = .001
+    batch_size = 100
+    optimizer = optimizers.Adam(learning_rate=lr)
+    model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
+
+    # create tensorboard
+    #creating unique name for tensorboard directory
+    log_dir = "logs/class/" + datetime.datetime.now().strftime(f"%Y/%m/%d-%H-%M-%S-batch_size={batch_size}-lr={lr}")
+    #Tensforboard callback function
+    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+
+    # train_img =np.expand_dims(train_img, axis=(0,3))
+    # val_img =np.expand_dims(val_img, axis=(0,3))
+
+    print("Running model")
+    model.fit(train_img, y_train, batch_size=batch_size, epochs=5, validation_data=(val_img, y_test), callbacks=[tensorboard_callback])
+
+    
+
+    print("Collecting data")
+    loss, acc = model.evaluate(val_img, y_test)
+    y_pred = model.predict(val_img)
+    y_pred = np.argmax(y_pred, axis=1)
+    new_y_pred = []
+    for y in y_pred:
+        new_y_pred.append(translation[y])
+    y_pred = pd.DataFrame(new_y_pred, columns=['col'])
+
+    print(f'Final Accuracy: {round(acc, 2)}')
+    print(confusion_matrix(y_true, y_pred.col))
+    ConfusionMatrixDisplay.from_predictions(y_true, y_pred.col, cmap='Blues')
+    plt.xticks(rotation=90)
+    plt.tight_layout()
+    plt.savefig('fig.jpg')
 
 # train a CNN that has two branches at the end to determine two different attributes
 def task4(train_img, train_class, val_img, val_class, target):
@@ -244,6 +382,7 @@ def main():
         return
     # read in all the data we need to
     
+    print("Reading csvs")
     # first read in the train and validation classification results
     train_labels = pd.read_csv('fairface_label_train.csv')
     valid_labels = pd.read_csv('fairface_label_val.csv')
@@ -252,6 +391,7 @@ def main():
     train_images = []
     min = 255
     max = 0
+    print("Reading files")
     for filename in train_labels['file']:
         image = cv2.imread(filename, cv2.IMREAD_GRAYSCALE)
         if np.max(image) > max:
@@ -259,6 +399,8 @@ def main():
         if np.min(image) < min:
             min = np.min(image)
         train_images.append(image)
+
+    print("files read")
 
     val_images = []
     for filename in valid_labels['file']:
@@ -278,6 +420,12 @@ def main():
     task = sys.argv[1]
     if(task == '1'):
         task1(train_images, train_labels, val_images, valid_labels, target)
+
+    elif(task == '2'):
+        task2(train_images, train_labels, val_images, valid_labels, target)
+
+    elif(task == '3'):
+        task3(train_images, train_labels, val_images, valid_labels, target)
 
     elif(task == '4'):
         task4(train_images, train_labels, val_images, valid_labels, target)
