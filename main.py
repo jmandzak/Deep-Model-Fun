@@ -4,10 +4,10 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import pandas as pd
 import tensorflow as tf
 from tensorflow.keras.models import Sequential, Model
-from tensorflow.keras import layers, losses, metrics, optimizers, backend
+from tensorflow.keras import layers, losses, optimizers, backend
 import cv2
 import numpy as np
-from sklearn.metrics import classification_report, multilabel_confusion_matrix, confusion_matrix, ConfusionMatrixDisplay
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import datetime
 import matplotlib.pyplot as plt
 
@@ -265,7 +265,10 @@ def task3(train_img, train_class, val_img, val_class, target):
 # train a CNN that has two branches at the end to determine two different attributes
 def task4(train_img, train_class, val_img, val_class, target):
 
-    # for now let's just assume the two tasks are always gender and race
+    # let's just assume the two tasks are always gender and race
+    gender_translation = gender
+    race_translation = race
+
     y_train_gender = pd.get_dummies(train_class.gender)
     y_train_race = pd.get_dummies(train_class.race)
 
@@ -305,6 +308,35 @@ def task4(train_img, train_class, val_img, val_class, target):
     model.fit(train_img, {'out1': y_train_gender, 'out2': y_train_race}, batch_size=batch_size, epochs=50, validation_data=(val_img, {'out1': y_test_gender, 'out2': y_test_race}), callbacks=[tensorboard_callback])
 
     print(model.evaluate(val_img, {'out1': y_test_gender, 'out2': y_test_race}))
+    loss, gender_loss, race_loss, gender_acc, race_acc = model.evaluate(val_img, {'out1': y_test_gender, 'out2': y_test_race})
+
+    y_pred = model.predict(val_img)
+    print(y_pred[1].shape)
+    gender_pred = np.argmax(y_pred[0], axis=1)
+    race_pred = np.argmax(y_pred[1], axis=1)
+    new_gender_pred = []
+    new_race_pred = []
+    for g, r in zip(gender_pred, race_pred):
+        new_gender_pred.append(gender_translation[g])
+        new_race_pred.append(race_translation[r])
+    
+    gender_pred = pd.DataFrame(new_gender_pred, columns=['gender'])
+    race_pred = pd.DataFrame(new_race_pred, columns=['race'])
+
+    print(f'Final Accuracy for gender: {round(gender_acc, 2)}')
+    print(f'Final Accuracy for race: {round(race_acc, 2)}\n\n')
+    print('Confusion Matrix for gender: (Image can be found in fig_gender.jpg)')
+    print(confusion_matrix(val_class.gender, gender_pred.gender))
+    print('\nConfusion matrix for race: (Image can be found in fig_race.jpg)')
+    print(confusion_matrix(val_class.race, race_pred.race))
+    ConfusionMatrixDisplay.from_predictions(val_class.gender, gender_pred.gender, cmap='Blues')
+    plt.xticks(rotation=90)
+    plt.tight_layout()
+    plt.savefig('fig_gender.jpg')
+    ConfusionMatrixDisplay.from_predictions(val_class.race, race_pred.race, cmap='Blues')
+    plt.xticks(rotation=90)
+    plt.tight_layout()
+    plt.savefig('fig_race.jpg')
 
 
 # this task implements a VAE
