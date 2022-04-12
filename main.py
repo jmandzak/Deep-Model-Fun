@@ -107,7 +107,7 @@ def task1(train_img, train_class, val_img, val_class, target):
     #Tensforboard callback function
     tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 
-    model.fit(train_img, y_train, batch_size=batch_size, epochs=5, validation_data=(val_img, y_test), callbacks=[tensorboard_callback])
+    model.fit(train_img, y_train, batch_size=batch_size, epochs=50, validation_data=(val_img, y_test), )#callbacks=[tensorboard_callback])
 
     loss, acc = model.evaluate(val_img, y_test)
     y_pred = model.predict(val_img)
@@ -122,7 +122,7 @@ def task1(train_img, train_class, val_img, val_class, target):
     ConfusionMatrixDisplay.from_predictions(y_true, y_pred.col, cmap='Blues')
     plt.xticks(rotation=90)
     plt.tight_layout()
-    plt.savefig('fig.jpg')
+    plt.savefig(f'task1_{target}.jpg')
 
 def task2(train_img, train_class, val_img, val_class, target):
     if target == 'g':
@@ -172,7 +172,7 @@ def task2(train_img, train_class, val_img, val_class, target):
     # val_img =np.expand_dims(val_img, axis=(0,3))
 
     print("Running model")
-    model.fit(train_img, y_train, batch_size=batch_size, epochs=5, validation_data=(val_img, y_test), callbacks=[tensorboard_callback])
+    model.fit(train_img, y_train, batch_size=batch_size, epochs=25, validation_data=(val_img, y_test), )#callbacks=[tensorboard_callback])
 
     
 
@@ -190,7 +190,7 @@ def task2(train_img, train_class, val_img, val_class, target):
     ConfusionMatrixDisplay.from_predictions(y_true, y_pred.col, cmap='Blues')
     plt.xticks(rotation=90)
     plt.tight_layout()
-    plt.savefig('fig.jpg')
+    plt.savefig(f'task2_{target}.jpg')
 
 def task3(train_img, train_class, val_img, val_class, target):
     if target == 'g':
@@ -242,7 +242,7 @@ def task3(train_img, train_class, val_img, val_class, target):
     # val_img =np.expand_dims(val_img, axis=(0,3))
 
     print("Running model")
-    model.fit(train_img, y_train, batch_size=batch_size, epochs=5, validation_data=(val_img, y_test), callbacks=[tensorboard_callback])
+    model.fit(train_img, y_train, batch_size=batch_size, epochs=25, validation_data=(val_img, y_test), callbacks=[tensorboard_callback])
 
     
 
@@ -260,10 +260,10 @@ def task3(train_img, train_class, val_img, val_class, target):
     ConfusionMatrixDisplay.from_predictions(y_true, y_pred.col, cmap='Blues')
     plt.xticks(rotation=90)
     plt.tight_layout()
-    plt.savefig('fig.jpg')
+    plt.savefig(f'task3{target}.jpg')
 
 # train a CNN that has two branches at the end to determine two different attributes
-def task4(train_img, train_class, val_img, val_class, target):
+def task4(train_img, train_class, val_img, val_class):
 
     # let's just assume the two tasks are always gender and race
     gender_translation = gender
@@ -305,7 +305,7 @@ def task4(train_img, train_class, val_img, val_class, target):
     #Tensforboard callback function
     tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 
-    model.fit(train_img, {'out1': y_train_gender, 'out2': y_train_race}, batch_size=batch_size, epochs=50, validation_data=(val_img, {'out1': y_test_gender, 'out2': y_test_race}), callbacks=[tensorboard_callback])
+    model.fit(train_img, {'out1': y_train_gender, 'out2': y_train_race}, batch_size=batch_size, epochs=10, validation_data=(val_img, {'out1': y_test_gender, 'out2': y_test_race}), callbacks=[tensorboard_callback])
 
     print(model.evaluate(val_img, {'out1': y_test_gender, 'out2': y_test_race}))
     loss, gender_loss, race_loss, gender_acc, race_acc = model.evaluate(val_img, {'out1': y_test_gender, 'out2': y_test_race})
@@ -401,7 +401,7 @@ def task5(train_img, val_img):
     i = 0
     for a in y_pred:
         img = np.reshape(a, (32, 32)) * 255
-        f = f'face{i}.jpg'
+        f = f'face_test{i}.jpg'
         print(img)
         cv2.imwrite(f, img)
         i += 1
@@ -410,8 +410,11 @@ def task5(train_img, val_img):
 def main():
     # do command line arguments here
     if len(sys.argv) < 3:
-        print("args: task[1/2/3/4/5] attribute[g/a/r]")
-        return
+        if len(sys.argv) == 2 and (sys.argv[1] == '4' or sys.argv[1] == '5'):
+            pass
+        else:
+            print("args: task[1/2/3/4/5] attribute[g/a/r]")
+            return
     # read in all the data we need to
     
     print("Reading csvs")
@@ -460,7 +463,7 @@ def main():
         task3(train_images, train_labels, val_images, valid_labels, target)
 
     elif(task == '4'):
-        task4(train_images, train_labels, val_images, valid_labels, target)
+        task4(train_images, train_labels, val_images, valid_labels)
 
     elif(task == '5'):
         task5(train_images, val_images)
